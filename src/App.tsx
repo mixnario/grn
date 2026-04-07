@@ -20,7 +20,10 @@ import {
   RefreshCw,
   Stethoscope,
   Scissors,
-  Syringe
+  Syringe,
+  MoreVertical,
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -201,21 +204,40 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setNewPost({ ...newPost, image: file });
-      setPreviewUrl(URL.createObjectURL(file));
+      if (editingPost) {
+        setEditingPost({ ...editingPost, imageUrl: URL.createObjectURL(file) });
+      } else {
+        setNewPost({ ...newPost, image: file });
+        setPreviewUrl(URL.createObjectURL(file));
+      }
     }
   };
 
   const generateMeme = () => {
     const randomMeme = MEME_TEMPLATES[Math.floor(Math.random() * MEME_TEMPLATES.length)];
-    setNewPost({ ...newPost, memeText: randomMeme });
+    if (editingPost) {
+      setEditingPost({ ...editingPost, memeText: randomMeme });
+    } else {
+      setNewPost({ ...newPost, memeText: randomMeme });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (editingPost) {
+      setPosts(posts.map(p => p.id === editingPost.id ? editingPost : p));
+      setEditingPost(null);
+      setIsFormOpen(false);
+      return;
+    }
+
     if (!newPost.savedItem || !newPost.action) return;
 
     const randomChar: Character = Math.random() > 0.5 ? 'RICO' : 'BORI';
@@ -240,6 +262,16 @@ export default function App() {
     setIsFormOpen(false);
     setNewPost({ savedItem: '', action: '', message: '', image: null, memeText: '' });
     setPreviewUrl(null);
+  };
+
+  const handleEdit = (post: Post) => {
+    setEditingPost(post);
+    setIsFormOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setPosts(posts.filter(p => p.id !== id));
+    setDeletingPostId(null);
   };
 
   const handleLike = (id: string) => {
@@ -330,9 +362,22 @@ export default function App() {
                       </p>
                     </div>
                   </div>
-                  <button className="p-2 text-gray-300 hover:text-[#E86A33] transition-colors">
-                    <Share2 className="w-6 h-6" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => handleEdit(post)}
+                      className="p-2 text-gray-300 hover:text-blue-500 transition-colors"
+                      title="수정"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => setDeletingPostId(post.id)}
+                      className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Post Content */}
@@ -380,37 +425,31 @@ export default function App() {
                   />
 
                   {/* Interactions */}
-                  <div className="mt-8 pt-6 border-t border-gray-50 flex items-center justify-between">
-                    <div className="flex items-center gap-5">
+                  <div className="mt-8 pt-6 border-t border-gray-50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center justify-between w-full sm:w-auto gap-4">
                       <button 
                         onClick={() => handleLike(post.id)}
                         className="flex items-center gap-2 group"
                       >
-                        <Heart className={`w-6 h-6 transition-all duration-300 ${post.likes > 0 ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-300 group-hover:text-red-500 group-hover:scale-110'}`} />
-                        <span className="text-sm font-black text-gray-500">{post.likes}</span>
+                        <Heart className={`w-5 h-5 transition-all duration-300 ${post.likes > 0 ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-300 group-hover:text-red-500 group-hover:scale-110'}`} />
+                        <span className="text-xs font-black text-gray-500">{post.likes}</span>
                       </button>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <button 
                           onClick={() => handleReaction(post.id, 'clap')}
-                          className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-orange-50 transition-all hover:-translate-y-1 text-lg shadow-sm"
+                          className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-orange-50 transition-all text-base shadow-sm"
                         >
-                          👏 <span className="ml-1 text-[11px] font-black">{post.reactions.clap}</span>
+                          👏 <span className="ml-1 text-[10px] font-black">{post.reactions.clap}</span>
                         </button>
                         <button 
                           onClick={() => handleReaction(post.id, 'fire')}
-                          className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-orange-50 transition-all hover:-translate-y-1 text-lg shadow-sm"
+                          className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-orange-50 transition-all text-base shadow-sm"
                         >
-                          🔥 <span className="ml-1 text-[11px] font-black">{post.reactions.fire}</span>
-                        </button>
-                        <button 
-                          onClick={() => handleReaction(post.id, 'laugh')}
-                          className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-orange-50 transition-all hover:-translate-y-1 text-lg shadow-sm"
-                        >
-                          😂 <span className="ml-1 text-[11px] font-black">{post.reactions.laugh}</span>
+                          🔥 <span className="ml-1 text-[10px] font-black">{post.reactions.fire}</span>
                         </button>
                       </div>
                     </div>
-                    <button className="text-[11px] font-black text-[#E86A33] bg-orange-50 px-4 py-2.5 rounded-2xl hover:bg-orange-100 transition-all active:scale-95 shadow-sm">
+                    <button className="w-full sm:w-auto text-[10px] font-black text-[#E86A33] bg-orange-50 px-4 py-2 rounded-xl hover:bg-orange-100 transition-all active:scale-95 shadow-sm">
                       나도 해볼게요
                     </button>
                   </div>
@@ -451,9 +490,15 @@ export default function App() {
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                   <span className="text-4xl">{BORI_EMOJI}</span>
-                  <h2 className="text-2xl font-black">절약 인증하기 ✍️</h2>
+                  <h2 className="text-2xl font-black">{editingPost ? '인증 수정하기 ✏️' : '절약 인증하기 ✍️'}</h2>
                 </div>
-                <button onClick={() => setIsFormOpen(false)} className="p-3 hover:bg-gray-100 rounded-2xl transition-colors">
+                <button 
+                  onClick={() => {
+                    setIsFormOpen(false);
+                    setEditingPost(null);
+                  }} 
+                  className="p-3 hover:bg-gray-100 rounded-2xl transition-colors"
+                >
                   <X className="w-7 h-7" />
                 </button>
               </div>
@@ -465,8 +510,11 @@ export default function App() {
                     type="text" 
                     placeholder="예: 거즈, 알코올 솜, 테이프 등"
                     className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#E86A33] focus:bg-white transition-all outline-none font-bold"
-                    value={newPost.savedItem}
-                    onChange={(e) => setNewPost({ ...newPost, savedItem: e.target.value })}
+                    value={editingPost ? editingPost.savedItem : newPost.savedItem}
+                    onChange={(e) => {
+                      if (editingPost) setEditingPost({ ...editingPost, savedItem: e.target.value });
+                      else setNewPost({ ...newPost, savedItem: e.target.value });
+                    }}
                     required
                   />
                 </div>
@@ -477,8 +525,11 @@ export default function App() {
                     type="text" 
                     placeholder="예: 필요한 만큼만 소분, 재활용 등"
                     className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#E86A33] focus:bg-white transition-all outline-none font-bold"
-                    value={newPost.action}
-                    onChange={(e) => setNewPost({ ...newPost, action: e.target.value })}
+                    value={editingPost ? editingPost.action : newPost.action}
+                    onChange={(e) => {
+                      if (editingPost) setEditingPost({ ...editingPost, action: e.target.value });
+                      else setNewPost({ ...newPost, action: e.target.value });
+                    }}
                     required
                   />
                 </div>
@@ -488,8 +539,11 @@ export default function App() {
                   <textarea 
                     placeholder="동료들에게 절약 팁을 공유해주세요!"
                     className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#E86A33] focus:bg-white transition-all outline-none font-bold h-28 resize-none"
-                    value={newPost.message}
-                    onChange={(e) => setNewPost({ ...newPost, message: e.target.value })}
+                    value={editingPost ? editingPost.message : newPost.message}
+                    onChange={(e) => {
+                      if (editingPost) setEditingPost({ ...editingPost, message: e.target.value });
+                      else setNewPost({ ...newPost, message: e.target.value });
+                    }}
                   />
                 </div>
 
@@ -503,14 +557,20 @@ export default function App() {
                     <RefreshCw className="w-5 h-5" />
                     랜덤 절약 밈 생성 🔥
                   </button>
-                  {newPost.memeText && (
+                  {(editingPost?.memeText || newPost.memeText) && (
                     <motion.div 
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       className="bg-yellow-50 px-5 py-3 rounded-2xl border border-yellow-100 flex items-center justify-between"
                     >
-                      <span className="text-xs font-black italic text-yellow-700">"{newPost.memeText}"</span>
-                      <button onClick={() => setNewPost({ ...newPost, memeText: '' })} className="text-yellow-600 p-1">
+                      <span className="text-xs font-black italic text-yellow-700">"{editingPost ? editingPost.memeText : newPost.memeText}"</span>
+                      <button 
+                        onClick={() => {
+                          if (editingPost) setEditingPost({ ...editingPost, memeText: '' });
+                          else setNewPost({ ...newPost, memeText: '' });
+                        }} 
+                        className="text-yellow-600 p-1"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </motion.div>
@@ -534,11 +594,14 @@ export default function App() {
                     accept="image/*" 
                     onChange={handleImageChange}
                   />
-                  {previewUrl && (
+                  {(editingPost?.imageUrl || previewUrl) && (
                     <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-orange-100 shadow-md">
-                      <img src={previewUrl} alt="미리보기" className="w-full h-full object-cover" />
+                      <img src={editingPost ? editingPost.imageUrl : previewUrl!} alt="미리보기" className="w-full h-full object-cover" />
                       <button 
-                        onClick={() => { setPreviewUrl(null); setNewPost({ ...newPost, image: null }); }}
+                        onClick={() => { 
+                          if (editingPost) setEditingPost({ ...editingPost, imageUrl: undefined });
+                          else { setPreviewUrl(null); setNewPost({ ...newPost, image: null }); }
+                        }}
                         className="absolute top-0 right-0 bg-black/50 text-white p-1"
                       >
                         <X className="w-4 h-4" />
@@ -551,9 +614,50 @@ export default function App() {
                   type="submit"
                   className="w-full py-5 bg-[#E86A33] text-white font-black text-lg rounded-[2rem] shadow-xl shadow-orange-500/20 hover:bg-[#d45a2a] transition-all active:scale-95 mt-4"
                 >
-                  인증 완료! 🚀
+                  {editingPost ? '수정 완료! ✨' : '인증 완료! 🚀'}
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingPostId && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingPostId(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-white rounded-[2rem] p-8 w-full max-w-xs text-center shadow-2xl"
+            >
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black mb-2">게시글 삭제</h3>
+              <p className="text-sm text-gray-500 mb-8 font-medium">정말로 이 게시글을 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.</p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setDeletingPostId(null)}
+                  className="flex-1 py-3 bg-gray-100 text-gray-600 font-black rounded-xl hover:bg-gray-200 transition-all"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={() => handleDelete(deletingPostId)}
+                  className="flex-1 py-3 bg-red-500 text-white font-black rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-200"
+                >
+                  삭제
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
