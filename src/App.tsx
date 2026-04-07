@@ -52,6 +52,7 @@ interface Post {
     laugh: number;
   };
   createdAt: Date;
+  isSample?: boolean;
 }
 
 // --- Constants & Helpers ---
@@ -107,6 +108,7 @@ const SAMPLE_POSTS: Post[] = [
     likes: 15,
     reactions: { clap: 8, fire: 5, laugh: 2 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 1),
+    isSample: true,
   },
   {
     id: '2',
@@ -119,6 +121,7 @@ const SAMPLE_POSTS: Post[] = [
     likes: 22,
     reactions: { clap: 12, fire: 3, laugh: 4 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4),
+    isSample: true,
   },
   {
     id: '3',
@@ -131,6 +134,7 @@ const SAMPLE_POSTS: Post[] = [
     likes: 10,
     reactions: { clap: 5, fire: 2, laugh: 0 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 10),
+    isSample: true,
   },
   {
     id: '4',
@@ -143,6 +147,7 @@ const SAMPLE_POSTS: Post[] = [
     likes: 18,
     reactions: { clap: 6, fire: 4, laugh: 10 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 20),
+    isSample: true,
   },
   {
     id: '5',
@@ -155,6 +160,7 @@ const SAMPLE_POSTS: Post[] = [
     likes: 35,
     reactions: { clap: 25, fire: 15, laugh: 1 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 40),
+    isSample: true,
   }
 ];
 
@@ -285,6 +291,11 @@ export default function App() {
     } : p));
   };
 
+  const userPosts = posts.filter(p => !p.isSample);
+  const cumulativeCount = userPosts.length;
+  // 절약 지수: 신규 게시글 1건당 5%씩 상승 (최대 100%)
+  const savingsIndex = Math.min(cumulativeCount * 5, 100);
+
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#483729] font-sans pb-10">
       {/* Header */}
@@ -322,11 +333,11 @@ export default function App() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
                   <p className="text-[10px] font-bold text-orange-400 mb-1">누적 인증</p>
-                  <p className="text-2xl font-black text-[#E86A33]">{posts.length}<span className="text-sm font-bold ml-1">건</span></p>
+                  <p className="text-2xl font-black text-[#E86A33]">{cumulativeCount}<span className="text-sm font-bold ml-1">건</span></p>
                 </div>
                 <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
                   <p className="text-[10px] font-bold text-blue-400 mb-1">절약 지수</p>
-                  <p className="text-2xl font-black text-blue-600">98<span className="text-sm font-bold ml-1">%</span></p>
+                  <p className="text-2xl font-black text-blue-600">{savingsIndex}<span className="text-sm font-bold ml-1">%</span></p>
                 </div>
               </div>
             </div>
