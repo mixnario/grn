@@ -24,16 +24,16 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUrl(url) {
-      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+      return url == null || (url is string && (url.matches("^https://.*") || url.matches("^http://.*") || url.matches("^blob:.*")));
     }
 
     function isValidPost(data) {
       return data.author is string && data.author.size() > 0 && data.author.size() <= 50 &&
              data.savedItem is string && data.savedItem.size() > 0 && data.savedItem.size() <= 100 &&
              data.action is string && data.action.size() > 0 && data.action.size() <= 100 &&
-             (!('message' in data) || (data.message is string && data.message.size() <= 500)) &&
-             (!('imageUrl' in data) || isValidUrl(data.imageUrl)) &&
-             (!('memeText' in data) || (data.memeText is string && data.memeText.size() <= 100)) &&
+             (data.message == null || (data.message is string && data.message.size() <= 500)) &&
+             isValidUrl(data.imageUrl) &&
+             (data.memeText == null || (data.memeText is string && data.memeText.size() <= 100)) &&
              data.characterComment is map &&
              data.characterComment.character in ['RICO', 'BORI'] &&
              data.characterComment.text is string &&
