@@ -329,6 +329,14 @@ export default function App() {
     
     try {
       if (editingPost) {
+        if (editingPost.isSample) {
+          // Update sample post locally
+          setPosts(posts.map(p => p.id === editingPost.id ? editingPost : p));
+          setEditingPost(null);
+          setIsFormOpen(false);
+          return;
+        }
+
         const postRef = doc(db, 'posts', editingPost.id);
         await updateDoc(postRef, {
           author: editingPost.author,
@@ -377,6 +385,13 @@ export default function App() {
 
   const handleDelete = async (id: string) => {
     try {
+      const post = posts.find(p => p.id === id);
+      if (post?.isSample) {
+        setPosts(posts.filter(p => p.id !== id));
+        setDeletingPostId(null);
+        return;
+      }
+
       await deleteDoc(doc(db, 'posts', id));
       setDeletingPostId(null);
     } catch (err) {
@@ -386,6 +401,12 @@ export default function App() {
 
   const handleLike = async (id: string) => {
     try {
+      const post = posts.find(p => p.id === id);
+      if (post?.isSample) {
+        setPosts(posts.map(p => p.id === id ? { ...p, likes: p.likes + 1 } : p));
+        return;
+      }
+
       const postRef = doc(db, 'posts', id);
       await updateDoc(postRef, {
         likes: increment(1)
@@ -397,6 +418,15 @@ export default function App() {
 
   const handleReaction = async (id: string, type: keyof Post['reactions']) => {
     try {
+      const post = posts.find(p => p.id === id);
+      if (post?.isSample) {
+        setPosts(posts.map(p => p.id === id ? { 
+          ...p, 
+          reactions: { ...p.reactions, [type]: p.reactions[type] + 1 } 
+        } : p));
+        return;
+      }
+
       const postRef = doc(db, 'posts', id);
       await updateDoc(postRef, {
         [`reactions.${type}`]: increment(1)

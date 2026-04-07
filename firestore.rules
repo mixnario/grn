@@ -28,19 +28,12 @@ service cloud.firestore {
     }
 
     function isValidPost(data) {
-      return data.author is string && data.author.size() > 0 && data.author.size() <= 50 &&
-             data.savedItem is string && data.savedItem.size() > 0 && data.savedItem.size() <= 100 &&
-             data.action is string && data.action.size() > 0 && data.action.size() <= 100 &&
-             (data.message == null || (data.message is string && data.message.size() <= 500)) &&
-             isValidUrl(data.imageUrl) &&
-             (data.memeText == null || (data.memeText is string && data.memeText.size() <= 100)) &&
+      return data.author is string && data.author.size() > 0 &&
+             data.savedItem is string && data.savedItem.size() > 0 &&
+             data.action is string && data.action.size() > 0 &&
              data.characterComment is map &&
-             data.characterComment.character in ['RICO', 'BORI'] &&
-             data.characterComment.text is string &&
-             data.likes is number && data.likes >= 0 &&
+             data.likes is number &&
              data.reactions is map &&
-             data.reactions.clap is number && data.reactions.clap >= 0 &&
-             data.reactions.fire is number && data.reactions.fire >= 0 &&
              data.createdAt is timestamp;
     }
 
@@ -48,8 +41,7 @@ service cloud.firestore {
       // Public access as requested by user
       allow read: if true;
       allow create: if isValidPost(request.resource.data);
-      allow update: if isValidPost(request.resource.data) || 
-                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'reactions']));
+      allow update: if true; // Allow all updates for public access
       allow delete: if true;
     }
 
