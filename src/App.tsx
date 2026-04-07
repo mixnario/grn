@@ -9,7 +9,6 @@ import {
   Heart, 
   MessageCircle, 
   Share2, 
-  Camera, 
   Plus, 
   TrendingUp, 
   Flame, 
@@ -256,12 +255,8 @@ export default function App() {
     savedItem: '',
     action: '',
     message: '',
-    image: null as File | null,
     memeText: ''
   });
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
@@ -303,18 +298,6 @@ export default function App() {
     return () => unsubscribe();
   }, [isReady]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (editingPost) {
-        setEditingPost({ ...editingPost, imageUrl: URL.createObjectURL(file) });
-      } else {
-        setNewPost({ ...newPost, image: file });
-        setPreviewUrl(URL.createObjectURL(file));
-      }
-    }
-  };
-
   const generateMeme = () => {
     const randomMeme = MEME_TEMPLATES[Math.floor(Math.random() * MEME_TEMPLATES.length)];
     if (editingPost) {
@@ -343,7 +326,6 @@ export default function App() {
           savedItem: editingPost.savedItem,
           action: editingPost.action,
           message: editingPost.message,
-          imageUrl: editingPost.imageUrl || null,
           memeText: editingPost.memeText || null,
         });
         setEditingPost(null);
@@ -362,7 +344,6 @@ export default function App() {
         savedItem: newPost.savedItem,
         action: newPost.action,
         message: newPost.message,
-        imageUrl: previewUrl || null,
         memeText: newPost.memeText || null,
         characterComment: { character: randomChar, text: randomComment },
         likes: 0,
@@ -371,8 +352,7 @@ export default function App() {
       });
 
       setIsFormOpen(false);
-      setNewPost({ author: '', savedItem: '', action: '', message: '', image: null, memeText: '' });
-      setPreviewUrl(null);
+      setNewPost({ author: '', savedItem: '', action: '', message: '', memeText: '' });
     } catch (err) {
       handleFirestoreError(err, editingPost ? OperationType.UPDATE : OperationType.CREATE, 'posts');
     }
@@ -748,39 +728,6 @@ export default function App() {
                         <X className="w-4 h-4" />
                       </button>
                     </motion.div>
-                  )}
-                </div>
-
-                {/* Image Upload */}
-                <div className="flex items-center gap-4">
-                  <button 
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-gray-100 text-gray-600 font-black text-sm hover:bg-gray-200 transition-all active:scale-95"
-                  >
-                    <Camera className="w-6 h-6" />
-                    사진 추가
-                  </button>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept="image/*" 
-                    onChange={handleImageChange}
-                  />
-                  {(editingPost?.imageUrl || previewUrl) && (
-                    <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-orange-100 shadow-md">
-                      <img src={editingPost ? editingPost.imageUrl : previewUrl!} alt="미리보기" className="w-full h-full object-cover" />
-                      <button 
-                        onClick={() => { 
-                          if (editingPost) setEditingPost({ ...editingPost, imageUrl: undefined });
-                          else { setPreviewUrl(null); setNewPost({ ...newPost, image: null }); }
-                        }}
-                        className="absolute top-0 right-0 bg-black/50 text-white p-1"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
                   )}
                 </div>
 
