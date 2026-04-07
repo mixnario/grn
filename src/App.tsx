@@ -200,6 +200,7 @@ export default function App() {
   const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [newPost, setNewPost] = useState({
+    author: '',
     savedItem: '',
     action: '',
     message: '',
@@ -244,7 +245,7 @@ export default function App() {
       return;
     }
 
-    if (!newPost.savedItem || !newPost.action) return;
+    if (!newPost.savedItem || !newPost.action || !newPost.author) return;
 
     const randomChar: Character = Math.random() > 0.5 ? 'RICO' : 'BORI';
     const comments = randomChar === 'RICO' ? RICO_COMMENTS : BORI_COMMENTS;
@@ -252,7 +253,7 @@ export default function App() {
 
     const post: Post = {
       id: Date.now().toString(),
-      author: '나 (참여자)',
+      author: newPost.author,
       savedItem: newPost.savedItem,
       action: newPost.action,
       message: newPost.message,
@@ -266,7 +267,7 @@ export default function App() {
 
     setPosts([post, ...posts]);
     setIsFormOpen(false);
-    setNewPost({ savedItem: '', action: '', message: '', image: null, memeText: '' });
+    setNewPost({ author: '', savedItem: '', action: '', message: '', image: null, memeText: '' });
     setPreviewUrl(null);
   };
 
@@ -496,9 +497,9 @@ export default function App() {
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              className="relative w-full max-w-md bg-white rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-white rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-6 shrink-0">
                 <div className="flex items-center gap-3">
                   <span className="text-4xl">{BORI_EMOJI}</span>
                   <h2 className="text-2xl font-black">{editingPost ? '인증 수정하기 ✏️' : '절약 인증하기 ✍️'}</h2>
@@ -514,7 +515,22 @@ export default function App() {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6 overflow-y-auto pr-2 pb-4 custom-scrollbar">
+                <div>
+                  <label className="block text-[11px] font-black mb-2 text-gray-400 uppercase tracking-widest">작성자 이름</label>
+                  <input 
+                    type="text" 
+                    placeholder="성함을 입력해주세요 (예: 김테크)"
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-[#E86A33] focus:bg-white transition-all outline-none font-bold"
+                    value={editingPost ? editingPost.author : newPost.author}
+                    onChange={(e) => {
+                      if (editingPost) setEditingPost({ ...editingPost, author: e.target.value });
+                      else setNewPost({ ...newPost, author: e.target.value });
+                    }}
+                    required
+                  />
+                </div>
+
                 <div>
                   <label className="block text-[11px] font-black mb-2 text-gray-400 uppercase tracking-widest">아낀 소모품</label>
                   <input 
