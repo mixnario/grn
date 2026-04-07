@@ -23,11 +23,63 @@ import {
   Syringe,
   MoreVertical,
   Edit2,
-  Trash2
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  updateDoc, 
+  doc, 
+  deleteDoc, 
+  Timestamp,
+  increment,
+  getDocFromServer
+} from 'firebase/firestore';
+import { db } from './firebase';
 
 // --- Types ---
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: undefined,
+      email: undefined,
+      emailVerified: undefined,
+      isAnonymous: undefined,
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 type Character = 'RICO' | 'BORI';
 
@@ -49,7 +101,6 @@ interface Post {
   reactions: {
     clap: number;
     fire: number;
-    laugh: number;
   };
   createdAt: Date;
   isSample?: boolean;
@@ -106,7 +157,7 @@ const SAMPLE_POSTS: Post[] = [
     memeText: '거즈 한 장으로 수술 끝',
     characterComment: { character: 'RICO', text: '거즈 한 장도 아끼는 당신, 진정한 수의 테크니션입니다.' },
     likes: 15,
-    reactions: { clap: 8, fire: 5, laugh: 2 },
+    reactions: { clap: 8, fire: 5 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 1),
     isSample: true,
   },
@@ -119,7 +170,7 @@ const SAMPLE_POSTS: Post[] = [
     memeText: '알코올 솜 1/4 조각의 기적',
     characterComment: { character: 'BORI', text: '이건 좀 잘했다 인정! 나도 알코올 솜 아껴볼까?' },
     likes: 22,
-    reactions: { clap: 12, fire: 3, laugh: 4 },
+    reactions: { clap: 12, fire: 3 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4),
     isSample: true,
   },
@@ -132,7 +183,7 @@ const SAMPLE_POSTS: Post[] = [
     memeText: '테이프는 딱 3cm만',
     characterComment: { character: 'RICO', text: '테이프 길이 조절이 아주 이성적이네요. 만족스럽습니다.' },
     likes: 10,
-    reactions: { clap: 5, fire: 2, laugh: 0 },
+    reactions: { clap: 5, fire: 2 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 10),
     isSample: true,
   },
@@ -145,7 +196,7 @@ const SAMPLE_POSTS: Post[] = [
     memeText: '일회용 패드, 깨끗한 쪽은 한 번 더',
     characterComment: { character: 'BORI', text: '나 원래 거즈 팍팍 쓰는데… 오늘은 참음! 칭찬해줘!' },
     likes: 18,
-    reactions: { clap: 6, fire: 4, laugh: 10 },
+    reactions: { clap: 6, fire: 4 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 20),
     isSample: true,
   },
@@ -158,7 +209,7 @@ const SAMPLE_POSTS: Post[] = [
     memeText: '이게 바로 베테랑의 손길',
     characterComment: { character: 'RICO', text: '소모품 절약은 병원 경영의 기초입니다. 훌륭해요.' },
     likes: 35,
-    reactions: { clap: 25, fire: 15, laugh: 1 },
+    reactions: { clap: 25, fire: 15 },
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 40),
     isSample: true,
   }
@@ -197,7 +248,8 @@ const SpeechBubble = ({ character, text }: { character: Character, text: string 
 };
 
 export default function App() {
-  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isReady, setIsReady] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [newPost, setNewPost] = useState({
     author: '',
@@ -213,6 +265,43 @@ export default function App() {
 
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+
+  // Connection Test & Initialization
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
+        }
+      }
+    };
+    testConnection();
+    setIsReady(true);
+  }, []);
+
+  // Real-time Data Fetching
+  useEffect(() => {
+    if (!isReady) return;
+
+    const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedPosts = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+        } as Post;
+      });
+      setPosts([...fetchedPosts, ...SAMPLE_POSTS.slice(0, 3)]);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'posts');
+    });
+
+    return () => unsubscribe();
+  }, [isReady]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -235,40 +324,50 @@ export default function App() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (editingPost) {
-      setPosts(posts.map(p => p.id === editingPost.id ? editingPost : p));
-      setEditingPost(null);
+    try {
+      if (editingPost) {
+        const postRef = doc(db, 'posts', editingPost.id);
+        await updateDoc(postRef, {
+          author: editingPost.author,
+          savedItem: editingPost.savedItem,
+          action: editingPost.action,
+          message: editingPost.message,
+          imageUrl: editingPost.imageUrl || null,
+          memeText: editingPost.memeText || null,
+        });
+        setEditingPost(null);
+        setIsFormOpen(false);
+        return;
+      }
+
+      if (!newPost.savedItem || !newPost.action || !newPost.author) return;
+
+      const randomChar: Character = Math.random() > 0.5 ? 'RICO' : 'BORI';
+      const comments = randomChar === 'RICO' ? RICO_COMMENTS : BORI_COMMENTS;
+      const randomComment = comments[Math.floor(Math.random() * comments.length)];
+
+      await addDoc(collection(db, 'posts'), {
+        author: newPost.author,
+        savedItem: newPost.savedItem,
+        action: newPost.action,
+        message: newPost.message,
+        imageUrl: previewUrl || null,
+        memeText: newPost.memeText || null,
+        characterComment: { character: randomChar, text: randomComment },
+        likes: 0,
+        reactions: { clap: 0, fire: 0 },
+        createdAt: Timestamp.now(),
+      });
+
       setIsFormOpen(false);
-      return;
+      setNewPost({ author: '', savedItem: '', action: '', message: '', image: null, memeText: '' });
+      setPreviewUrl(null);
+    } catch (err) {
+      handleFirestoreError(err, editingPost ? OperationType.UPDATE : OperationType.CREATE, 'posts');
     }
-
-    if (!newPost.savedItem || !newPost.action || !newPost.author) return;
-
-    const randomChar: Character = Math.random() > 0.5 ? 'RICO' : 'BORI';
-    const comments = randomChar === 'RICO' ? RICO_COMMENTS : BORI_COMMENTS;
-    const randomComment = comments[Math.floor(Math.random() * comments.length)];
-
-    const post: Post = {
-      id: Date.now().toString(),
-      author: newPost.author,
-      savedItem: newPost.savedItem,
-      action: newPost.action,
-      message: newPost.message,
-      imageUrl: previewUrl || undefined,
-      memeText: newPost.memeText,
-      characterComment: { character: randomChar, text: randomComment },
-      likes: 0,
-      reactions: { clap: 0, fire: 0, laugh: 0 },
-      createdAt: new Date(),
-    };
-
-    setPosts([post, ...posts]);
-    setIsFormOpen(false);
-    setNewPost({ author: '', savedItem: '', action: '', message: '', image: null, memeText: '' });
-    setPreviewUrl(null);
   };
 
   const handleEdit = (post: Post) => {
@@ -276,20 +375,35 @@ export default function App() {
     setIsFormOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setPosts(posts.filter(p => p.id !== id));
-    setDeletingPostId(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'posts', id));
+      setDeletingPostId(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `posts/${id}`);
+    }
   };
 
-  const handleLike = (id: string) => {
-    setPosts(posts.map(p => p.id === id ? { ...p, likes: p.likes + 1 } : p));
+  const handleLike = async (id: string) => {
+    try {
+      const postRef = doc(db, 'posts', id);
+      await updateDoc(postRef, {
+        likes: increment(1)
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `posts/${id}`);
+    }
   };
 
-  const handleReaction = (id: string, type: keyof Post['reactions']) => {
-    setPosts(posts.map(p => p.id === id ? { 
-      ...p, 
-      reactions: { ...p.reactions, [type]: p.reactions[type] + 1 } 
-    } : p));
+  const handleReaction = async (id: string, type: keyof Post['reactions']) => {
+    try {
+      const postRef = doc(db, 'posts', id);
+      await updateDoc(postRef, {
+        [`reactions.${type}`]: increment(1)
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `posts/${id}`);
+    }
   };
 
   const userPosts = posts.filter(p => !p.isSample);
@@ -461,7 +575,10 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                    <button className="w-full sm:w-auto text-[10px] font-black text-[#E86A33] bg-orange-50 px-4 py-2 rounded-xl hover:bg-orange-100 transition-all active:scale-95 shadow-sm">
+                    <button 
+                      onClick={() => setIsFormOpen(true)}
+                      className="w-full sm:w-auto text-[10px] font-black text-[#E86A33] bg-orange-50 px-4 py-2 rounded-xl hover:bg-orange-100 transition-all active:scale-95 shadow-sm"
+                    >
                       나도 해볼게요
                     </button>
                   </div>

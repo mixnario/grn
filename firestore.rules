@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: posts
+    // Document ID: auto-generated
+    // Fields:
+    //   - author: string (required, 1-50 chars)
+    //   - savedItem: string (required, 1-100 chars)
+    //   - action: string (required, 1-100 chars)
+    //   - message: string (optional, 0-500 chars)
+    //   - imageUrl: string (optional, URL format)
+    //   - memeText: string (optional, 0-100 chars)
+    //   - characterComment: map { character: string, text: string } (required)
+    //   - likes: number (required, >= 0)
+    //   - reactions: map { clap: number, fire: number } (required)
+    //   - createdAt: timestamp (required)
+    //   - isSample: boolean (optional)
+    //
+    // ===============================================================
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function isValidPost(data) {
+      return data.author is string && data.author.size() > 0 && data.author.size() <= 50 &&
+             data.savedItem is string && data.savedItem.size() > 0 && data.savedItem.size() <= 100 &&
+             data.action is string && data.action.size() > 0 && data.action.size() <= 100 &&
+             (!('message' in data) || (data.message is string && data.message.size() <= 500)) &&
+             (!('imageUrl' in data) || isValidUrl(data.imageUrl)) &&
+             (!('memeText' in data) || (data.memeText is string && data.memeText.size() <= 100)) &&
+             data.characterComment is map &&
+             data.characterComment.character in ['RICO', 'BORI'] &&
+             data.characterComment.text is string &&
+             data.likes is number && data.likes >= 0 &&
+             data.reactions is map &&
+             data.reactions.clap is number && data.reactions.clap >= 0 &&
+             data.reactions.fire is number && data.reactions.fire >= 0 &&
+             data.createdAt is timestamp;
+    }
+
+    match /posts/{postId} {
+      // Public access as requested by user
+      allow read: if true;
+      allow create: if isValidPost(request.resource.data);
+      allow update: if isValidPost(request.resource.data) || 
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'reactions']));
+      allow delete: if true;
+    }
+
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "Post": {
+      "title": "Post",
+      "description": "A post representing a supply-saving action in the veterinary hospital.",
+      "type": "object",
+      "properties": {
+        "author": { "type": "string", "description": "Name of the person who posted." },
+        "savedItem": { "type": "string", "description": "The item that was saved." },
+        "action": { "type": "string", "description": "The action taken to save the item." },
+        "message": { "type": "string", "description": "A personal message or tip." },
+        "imageUrl": { "type": "string", "description": "Optional URL of an uploaded image." },
+        "memeText": { "type": "string", "description": "Optional meme text generated for the post." },
+        "characterComment": {
+          "type": "object",
+          "properties": {
+            "character": { "type": "string", "enum": ["RICO", "BORI"] },
+            "text": { "type": "string" }
+          },
+          "required": ["character", "text"]
+        },
+        "likes": { "type": "integer", "description": "Number of likes." },
+        "reactions": {
+          "type": "object",
+          "properties": {
+            "clap": { "type": "integer" },
+            "fire": { "type": "integer" }
+          },
+          "required": ["clap", "fire"]
+        },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of creation." },
+        "isSample": { "type": "boolean", "description": "Whether this is a sample post." }
+      },
+      "required": ["author", "savedItem", "action", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Collection of all saving challenge posts."
+    }
+  }
+}
